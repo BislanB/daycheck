@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0F0F13">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>DayCheck — Трекер дня</title>
+  <meta name="description" content="Minute-by-minute day tracking PWA. Track your entire day from wake to sleep.">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ═══════ TRACKER SCREEN ═══════ -->
+    <div id="screen-tracker" class="screen active">
+      <div class="screen-header">
+        <h1 data-i18n="app.title">DayCheck</h1>
+        <div class="header-actions">
+          <button class="icon-btn" id="btn-settings" aria-label="Settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Current Activity -->
+      <div class="card activity-card" id="activity-card">
+        <div class="activity-idle" id="activity-idle">
+          <div class="idle-icon">⏱️</div>
+          <div class="idle-text" data-i18n="tracker.tapToStart">Выберите категорию для старта</div>
+        </div>
+        <div class="activity-main" id="activity-main" style="display:none">
+          <div class="activity-emoji" id="activity-emoji"></div>
+          <div class="activity-info">
+            <div class="activity-name" id="activity-name"></div>
+            <div class="activity-timer" id="activity-timer">
+              <span id="timer-display">00:00</span>
+              <div class="pulse-dot" id="pulse-dot"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Background Task -->
+      <div class="card bg-task-card" id="bg-task-card" style="display:none">
+        <span class="bg-task-label" data-i18n="tracker.bgTaskSet">Фон:</span>
+        <span id="bg-task-emoji"></span>
+        <span class="bg-task-name" id="bg-task-name"></span>
+        <button class="bg-task-clear" id="bg-task-clear">✕</button>
+      </div>
+
+      <!-- Day Control -->
+      <div id="day-control" style="margin-top:12px">
+        <button class="btn btn-primary btn-block start-day-btn" id="btn-start-day" data-i18n="tracker.startDay">Начать день</button>
+        <button class="btn btn-danger btn-block btn-sm" id="btn-end-day" style="display:none;margin-top:10px" data-i18n="tracker.endDay">Завершить день</button>
+      </div>
+
+      <!-- Category Grid -->
+      <div id="category-grid" class="category-grid" style="display:none"></div>
+
+      <!-- Bg Task Selector -->
+      <div id="bg-selector" style="display:none;margin-top:12px">
+        <div class="card-label" data-i18n="tracker.bgTaskSelect">Выберите фоновую задачу</div>
+        <div class="category-grid" id="bg-category-grid"></div>
+      </div>
+
+      <!-- Mini Timeline -->
+      <div class="mini-timeline" id="mini-timeline" style="display:none"></div>
+    </div>
+
+    <!-- ═══════ TIMELINE SCREEN ═══════ -->
+    <div id="screen-timeline" class="screen">
+      <div class="screen-header">
+        <h1 data-i18n="timeline.title">Таймлайн</h1>
+        <div class="header-actions">
+          <button class="icon-btn" id="btn-minute-mode" aria-label="Minute mode" title="Minute-by-minute">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="day-selector" id="timeline-day-selector"></div>
+
+      <!-- Normal timeline list -->
+      <div id="timeline-list-container">
+        <div class="timeline-list" id="timeline-list"></div>
+      </div>
+
+      <!-- Minute grid -->
+      <div class="minute-grid-container" id="minute-grid-container">
+        <div class="minute-grid-header">
+          <button class="btn btn-sm btn-secondary" id="btn-minute-back" data-i18n="timeline.back">Назад</button>
+          <span class="minute-grid-hint" data-i18n="timeline.minuteModeHint">Нажмите на минуту чтобы изменить категорию</span>
+        </div>
+        <div id="minute-grid" class="minute-grid"></div>
+        <div id="minute-selector-bar" class="minute-selector-bar"></div>
+      </div>
+    </div>
+
+    <!-- ═══════ STATS SCREEN ═══════ -->
+    <div id="screen-stats" class="screen">
+      <div class="screen-header">
+        <h1 data-i18n="stats.title">Статистика</h1>
+        <div class="header-actions">
+          <button class="icon-btn" id="btn-export-pdf" aria-label="Export PDF">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="day-selector" id="stats-day-selector"></div>
+
+      <div id="stats-content">
+        <div class="stats-summary" id="stats-summary"></div>
+
+        <div class="card" id="chart-category-card">
+          <div class="card-label" data-i18n="stats.byCategory">По категориям</div>
+          <div class="chart-container">
+            <canvas id="chart-category"></canvas>
+          </div>
+        </div>
+
+        <div class="card" id="chart-hourly-card">
+          <div class="card-label" data-i18n="stats.byHour">По часам</div>
+          <div class="chart-container">
+            <canvas id="chart-hourly"></canvas>
+          </div>
+        </div>
+
+        <div class="card" id="pvr-card">
+          <div class="card-label" data-i18n="stats.planVsReality">План vs Реальность</div>
+          <table class="pvr-table" id="pvr-table"></table>
+        </div>
+
+        <div class="empty-state" id="stats-empty" style="display:none">
+          <div class="empty-state-icon">📊</div>
+          <div class="empty-state-text" data-i18n="stats.noData">Нет данных для отображения</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ TAB BAR ═══════ -->
+    <nav id="tab-bar">
+      <button class="tab-btn active" data-tab="tracker">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span data-i18n="nav.tracker">Трекер</span>
+      </button>
+      <button class="tab-btn" data-tab="timeline">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+        </svg>
+        <span data-i18n="nav.timeline">Таймлайн</span>
+      </button>
+      <button class="tab-btn" data-tab="stats">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+        <span data-i18n="nav.stats">Статистика</span>
+      </button>
+    </nav>
+
+    <!-- ═══════ MODALS ═══════ -->
+    <div class="modal-overlay hidden" id="modal-overlay">
+      <div class="modal" id="modal-content"></div>
+    </div>
+
+  </div>
+
+  <!-- External Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js"></script>
+
+  <!-- App -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
