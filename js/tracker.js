@@ -14,6 +14,10 @@ export const TrackerScreen = {
     document.getElementById('btn-start-day').addEventListener('click', () => this.startDay());
     document.getElementById('btn-end-day').addEventListener('click', () => this.confirmEndDay());
     document.getElementById('bg-task-clear').addEventListener('click', () => this.clearBgTask());
+    document.getElementById('btn-pause').addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.pauseTracking();
+    });
     this.renderCategoryGrid();
   },
 
@@ -30,12 +34,19 @@ export const TrackerScreen = {
   render() {
     const hasDay = currentDay && !currentDay.endTime;
     const activeBlock = hasDay ? getActiveBlock(currentDay) : null;
+    const isPaused = hasDay && !activeBlock;
 
     // Day control
     document.getElementById('btn-start-day').style.display = hasDay ? 'none' : '';
     document.getElementById('btn-end-day').style.display = hasDay ? '' : 'none';
     document.getElementById('category-grid').style.display = hasDay ? '' : 'none';
     document.getElementById('mini-timeline').style.display = hasDay ? '' : 'none';
+
+    // Paused indicator
+    document.getElementById('paused-indicator').style.display = isPaused ? '' : 'none';
+
+    // Pause button
+    document.getElementById('btn-pause').style.display = activeBlock ? '' : 'none';
 
     // Activity card
     if (activeBlock) {
@@ -47,7 +58,6 @@ export const TrackerScreen = {
       document.getElementById('activity-name').style.color = cat.color;
       document.getElementById('pulse-dot').style.background = cat.color;
       document.getElementById('activity-card').style.borderColor = cat.color + '30';
-      document.getElementById('activity-card').querySelector('::before') // CSS handles this
       this.updateTimerDisplay(activeBlock);
 
       // Highlight active category
@@ -61,10 +71,16 @@ export const TrackerScreen = {
           btn.style.borderColor = 'transparent';
         }
       });
-    } else if (hasDay) {
+    } else if (isPaused) {
+      // Paused state — show idle card but with pause message
       document.getElementById('activity-idle').style.display = '';
       document.getElementById('activity-main').style.display = 'none';
-      document.getElementById('activity-card').style.borderColor = 'var(--border)';
+      document.getElementById('activity-card').style.borderColor = 'rgba(251,191,36,0.2)';
+      const idleText = document.querySelector('#activity-idle .idle-text');
+      idleText.textContent = t('tracker.tapToResume');
+      document.querySelector('#activity-idle .idle-icon').textContent = '⏸';
+
+      // Clear category highlights
       document.querySelectorAll('#category-grid .cat-btn').forEach(btn => {
         btn.classList.remove('active');
         btn.style.color = '';
@@ -73,7 +89,9 @@ export const TrackerScreen = {
     } else {
       document.getElementById('activity-idle').style.display = '';
       document.getElementById('activity-main').style.display = 'none';
+      document.getElementById('activity-card').style.borderColor = 'var(--border)';
       const idleText = document.querySelector('#activity-idle .idle-text');
+      document.querySelector('#activity-idle .idle-icon').textContent = '⏱️';
       if (currentDay && currentDay.endTime) {
         idleText.textContent = t('tracker.dayEnded');
       } else {
@@ -120,7 +138,6 @@ export const TrackerScreen = {
     bgToggle.innerHTML = `<span data-i18n="tracker.bgTask">${t('tracker.bgTask')}</span>`;
     bgToggle.addEventListener('click', () => this.toggleBgSelector());
 
-    // Insert after category grid
     const existingToggle = document.getElementById('btn-bg-toggle');
     if (existingToggle) existingToggle.remove();
     document.getElementById('category-grid').after(bgToggle);
@@ -133,6 +150,19 @@ export const TrackerScreen = {
     const currentBg = activeBlock ? activeBlock.bgCategoryId : null;
 
     addBlock(currentDay, catId, currentBg);
+    currentDay = getToday();
+    this.render();
+  },
+
+  /* ─── Pause / Resume ─── */
+  pauseTracking() {
+    if (!currentDay || currentDay.endTime) return;
+    const activeBlock = getActiveBlock(currentDay);
+    if (activeBlock) {
+      updateBlock(currentDay, activeBlock.id, { endTime: Date.now() });
+    }
+    currentDay.activeBlockId = null;
+    saveDay(currentDay);
     currentDay = getToday();
     this.render();
   },

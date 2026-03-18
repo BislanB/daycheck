@@ -8,7 +8,7 @@ import {
 import { openModal, closeModal } from './app.js';
 
 let selectedDayId = null;
-let minuteMode = false;
+let quickFillMode = false;
 let selectedMinuteCat = null;
 
 function tsToTimeStr(ts) {
@@ -25,8 +25,8 @@ function timeStrToTs(dayStartTs, timeStr) {
 
 export const TimelineScreen = {
   init() {
-    document.getElementById('btn-minute-mode').addEventListener('click', () => this.toggleMinuteMode());
-    document.getElementById('btn-minute-back').addEventListener('click', () => this.toggleMinuteMode());
+    document.getElementById('btn-minute-mode').addEventListener('click', () => this.toggleQuickFill());
+    document.getElementById('btn-minute-back').addEventListener('click', () => this.toggleQuickFill());
   },
 
   show() {
@@ -67,25 +67,25 @@ export const TimelineScreen = {
     const gridContainer = document.getElementById('minute-grid-container');
     const listContainer = document.getElementById('timeline-list-container');
 
-    if (minuteMode) {
+    if (quickFillMode) {
       listContainer.style.display = 'none';
       gridContainer.classList.add('active');
-      this.renderMinuteGrid(day);
+      this.renderQuickFill(day);
       return;
     }
 
     listContainer.style.display = '';
     gridContainer.classList.remove('active');
 
-    // Add entry button + minute mode button at top
+    // Top action buttons
     let topActions = `<div class="timeline-actions-bar">
       <button class="btn btn-sm btn-primary" id="btn-add-entry" style="flex:1;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         ${t('timeline.addEntry')}
       </button>
-      <button class="btn btn-sm btn-secondary" id="btn-minute-mode-alt">
+      <button class="btn btn-sm btn-secondary" id="btn-quickfill-alt">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        ${t('timeline.minuteEntry')}
+        ${t('timeline.quickFill')}
       </button>
     </div>`;
 
@@ -141,8 +141,8 @@ export const TimelineScreen = {
   bindTopActions() {
     const addBtn = document.getElementById('btn-add-entry');
     if (addBtn) addBtn.addEventListener('click', () => this.addManualEntry());
-    const mmBtn = document.getElementById('btn-minute-mode-alt');
-    if (mmBtn) mmBtn.addEventListener('click', () => this.toggleMinuteMode());
+    const qfBtn = document.getElementById('btn-quickfill-alt');
+    if (qfBtn) qfBtn.addEventListener('click', () => this.toggleQuickFill());
   },
 
   /* ─── Add Manual Entry ─── */
@@ -177,13 +177,15 @@ export const TimelineScreen = {
       <div class="modal-handle"></div>
       <div class="modal-title">${t('timeline.addEntry')}</div>
 
-      <div class="field">
-        <div class="field-label">${t('timeline.from')}</div>
-        <input type="time" class="field-input" id="add-start-time" value="${defaultStart}">
-      </div>
-      <div class="field">
-        <div class="field-label">${t('timeline.to')}</div>
-        <input type="time" class="field-input" id="add-end-time" value="${defaultEnd}">
+      <div style="display:flex;gap:10px;">
+        <div class="field" style="flex:1;">
+          <div class="field-label">${t('timeline.from')}</div>
+          <input type="time" class="field-input" id="add-start-time" value="${defaultStart}">
+        </div>
+        <div class="field" style="flex:1;">
+          <div class="field-label">${t('timeline.to')}</div>
+          <input type="time" class="field-input" id="add-end-time" value="${defaultEnd}">
+        </div>
       </div>
 
       <div class="field">
@@ -212,7 +214,6 @@ export const TimelineScreen = {
     let selCat = CATEGORIES[0].id;
     let selBg = null;
 
-    // Category selection
     document.querySelectorAll('#add-cat-grid .cat-select-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         selCat = btn.dataset.cat;
@@ -225,7 +226,6 @@ export const TimelineScreen = {
       });
     });
 
-    // BG selection
     document.querySelectorAll('#add-bg-grid .cat-select-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         selBg = btn.dataset.bg === 'none' ? null : btn.dataset.bg;
@@ -334,7 +334,6 @@ export const TimelineScreen = {
     let editCat = block.categoryId;
     let editBg = block.bgCategoryId;
 
-    // Category selection
     document.querySelectorAll('#edit-cat-grid .cat-select-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         editCat = btn.dataset.cat;
@@ -347,7 +346,6 @@ export const TimelineScreen = {
       });
     });
 
-    // BG selection
     document.querySelectorAll('#edit-bg-grid .cat-select-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         editBg = btn.dataset.bg === 'none' ? null : btn.dataset.bg;
@@ -370,8 +368,6 @@ export const TimelineScreen = {
       const newEndStr = document.getElementById('edit-end-time').value;
 
       const freshDay = getDay(selectedDayId);
-
-      // Update time if changed
       const newStartTs = timeStrToTs(freshDay.startTime, newStartStr);
       const newEndTs = timeStrToTs(freshDay.startTime, newEndStr);
 
@@ -396,52 +392,43 @@ export const TimelineScreen = {
     });
   },
 
-  /* ─── Minute Mode ─── */
-  toggleMinuteMode() {
-    minuteMode = !minuteMode;
+  /* ─── Quick Fill Mode ─── */
+  toggleQuickFill() {
+    quickFillMode = !quickFillMode;
     this.renderTimeline();
   },
 
-  renderMinuteGrid(day) {
+  renderQuickFill(day) {
     const grid = document.getElementById('minute-grid');
     const selectorBar = document.getElementById('minute-selector-bar');
+    const lang = getLang();
 
-    if (!day || day.blocks.length === 0) {
+    // Update header
+    document.querySelector('.minute-grid-hint').textContent = t('timeline.quickFillHint');
+
+    if (!day || !day.startTime) {
       grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-text">${t('timeline.empty')}</div></div>`;
       selectorBar.innerHTML = '';
       return;
     }
 
-    const minutes = getMinuteArray(day);
-    const lang = getLang();
-    let html = '';
-    let lastHour = -1;
+    const INTERVAL = 5; // 5-minute intervals
+    const start = day.startTime;
+    const end = day.endTime || Date.now();
+    const totalMinutes = Math.ceil((end - start) / 60000);
+    const intervals = Math.ceil(totalMinutes / INTERVAL);
 
-    minutes.forEach((m, i) => {
-      const hour = m.time.getHours();
-      if (hour !== lastHour) {
-        lastHour = hour;
-        html += `<div class="minute-hour-label">${String(hour).padStart(2, '0')}:00</div>`;
-      }
-      const color = m.categoryId ? getCategoryColor(m.categoryId) : 'rgba(255,255,255,0.03)';
-      const title = `${String(m.time.getHours()).padStart(2,'0')}:${String(m.time.getMinutes()).padStart(2,'0')} — ${m.categoryId ? getCategoryName(m.categoryId, lang) : '—'}`;
-      html += `<div class="minute-cell" data-minute="${i}" style="background:${color}" title="${title}"></div>`;
-    });
-
-    grid.innerHTML = html;
-
-    // Selector bar
+    // Category selector bar
     if (!selectedMinuteCat) selectedMinuteCat = CATEGORIES[0].id;
 
     selectorBar.innerHTML = CATEGORIES.map(cat => {
       const isActive = cat.id === selectedMinuteCat;
       return `<button class="minute-cat-btn${isActive ? ' active' : ''}" data-cat="${cat.id}" style="${isActive ? 'color:' + cat.color : ''}">
         <span class="minute-cat-dot" style="background:${cat.color}"></span>
-        ${getCategoryName(cat.id, lang)}
+        ${cat.emoji}
       </button>`;
     }).join('');
 
-    // Events
     selectorBar.querySelectorAll('.minute-cat-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         selectedMinuteCat = btn.dataset.cat;
@@ -454,15 +441,69 @@ export const TimelineScreen = {
       });
     });
 
-    grid.querySelectorAll('.minute-cell').forEach(cell => {
-      cell.addEventListener('click', () => {
+    // Build the list of time intervals
+    const minutes = getMinuteArray(day);
+    let html = '<div class="quickfill-list">';
+    let lastHourLabel = -1;
+
+    for (let i = 0; i < intervals; i++) {
+      const slotStart = start + i * INTERVAL * 60000;
+      const slotEnd = Math.min(slotStart + INTERVAL * 60000, end);
+
+      const startDate = new Date(slotStart);
+      const endDate = new Date(slotEnd);
+      const hourLabel = startDate.getHours();
+
+      // Hour separator
+      if (hourLabel !== lastHourLabel) {
+        lastHourLabel = hourLabel;
+        html += `<div class="quickfill-hour">${String(hourLabel).padStart(2, '0')}:00</div>`;
+      }
+
+      // Find dominant category in this interval
+      const catId = this.getDominantCat(minutes, i * INTERVAL, Math.min((i + 1) * INTERVAL, totalMinutes));
+      const cat = catId ? getCategoryById(catId) : null;
+
+      const startStr = tsToTimeStr(slotStart);
+      const endStr = tsToTimeStr(slotEnd);
+
+      html += `<div class="quickfill-row" data-slot="${i}" data-start="${slotStart}" data-end="${slotEnd}" ${cat ? `style="border-left-color:${cat.color}"` : ''}>
+        <span class="quickfill-time">${startStr}</span>
+        <span class="quickfill-dash">—</span>
+        <span class="quickfill-time">${endStr}</span>
+        <span class="quickfill-cat" style="color:${cat ? cat.color : 'var(--text-tertiary)'}">
+          ${cat ? cat.emoji + ' ' + getCategoryName(catId, lang) : '—'}
+        </span>
+      </div>`;
+    }
+
+    html += '</div>';
+    grid.innerHTML = html;
+
+    // Tap to paint
+    grid.querySelectorAll('.quickfill-row').forEach(row => {
+      row.addEventListener('click', () => {
         if (!selectedMinuteCat) return;
-        const idx = parseInt(cell.dataset.minute);
+        const startTs = parseInt(row.dataset.start);
+        const endTs = parseInt(row.dataset.end);
         const freshDay = getDay(selectedDayId);
-        setMinuteCategory(freshDay, idx, selectedMinuteCat);
-        this.renderMinuteGrid(getDay(selectedDayId));
+        insertManualBlock(freshDay, startTs, endTs, selectedMinuteCat);
+        this.renderQuickFill(getDay(selectedDayId));
       });
     });
+  },
+
+  getDominantCat(minutes, fromMin, toMin) {
+    const counts = {};
+    for (let i = fromMin; i < toMin && i < minutes.length; i++) {
+      const c = minutes[i].categoryId;
+      if (c) counts[c] = (counts[c] || 0) + 1;
+    }
+    let best = null, bestCount = 0;
+    for (const [id, count] of Object.entries(counts)) {
+      if (count > bestCount) { best = id; bestCount = count; }
+    }
+    return best;
   },
 
   setSelectedDay(dayId) {
